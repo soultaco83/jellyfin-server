@@ -31,8 +31,8 @@ jobs:
 
       - name: Merge upstream changes to master
         run: |
-          git checkout Taco-server
+          git checkout master
           git merge upstream/master
-          git push origin Taco-server
+          git push origin master
         env:
           GITHUB_TOKEN: ${{ secrets.WORKFLOW }}
