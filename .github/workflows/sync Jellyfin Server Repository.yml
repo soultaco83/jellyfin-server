@@ -1,4 +1,4 @@
-name: Sync with Jellyfin Web Repository
+name: Sync with Jellyfin Server Repository
 
 on:
   schedule:
