@@ -103,7 +103,7 @@ namespace Jellyfin.Server.Infrastructure
                 count: null).ConfigureAwait(false);
         }
 
-        private async Task SendFileAsync(string filePath, HttpResponse response, long offset, long? count)
+        private async Task SendFileAsync(string filePath, HttpResponse response, long offset, long? count, CancellationToken cancellationToken = default)
         {
             var fileInfo = GetFileInfo(filePath);
             if (offset < 0 || offset > fileInfo.Length)
@@ -120,6 +120,9 @@ namespace Jellyfin.Server.Infrastructure
             // Copied from SendFileFallback.SendFileAsync
             const int BufferSize = 1024 * 16;
 
+            var useRequestAborted = !cancellationToken.CanBeCanceled;
+            var localCancel = useRequestAborted ? response.HttpContext.RequestAborted : cancellationToken;
+
             var fileStream = new FileStream(
                 filePath,
                 FileMode.Open,
@@ -129,10 +132,17 @@ namespace Jellyfin.Server.Infrastructure
                 options: FileOptions.Asynchronous | FileOptions.SequentialScan);
             await using (fileStream.ConfigureAwait(false))
             {
-                fileStream.Seek(offset, SeekOrigin.Begin);
-                await StreamCopyOperation
-                    .CopyToAsync(fileStream, response.Body, count, BufferSize, CancellationToken.None)
-                    .ConfigureAwait(true);
+                try
+                {
+                    localCancel.ThrowIfCancellationRequested();
+                    fileStream.Seek(offset, SeekOrigin.Begin);
+                    await StreamCopyOperation
+                        .CopyToAsync(fileStream, response.Body, count, BufferSize, localCancel)
+                        .ConfigureAwait(true);
+                }
+                catch (OperationCanceledException) when (useRequestAborted)
+                {
+                }
             }
         }
 
