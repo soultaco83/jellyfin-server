@@ -176,14 +176,14 @@ namespace MediaBrowser.Providers.MediaInfo
 
             track.Title = string.IsNullOrEmpty(track.Title) ? mediaInfo.Name : track.Title;
             track.Album = string.IsNullOrEmpty(track.Album) ? mediaInfo.Album : track.Album;
-            track.Year ??= mediaInfo.ProductionYear;
-            track.TrackNumber ??= mediaInfo.IndexNumber;
-            track.DiscNumber ??= mediaInfo.ParentIndexNumber;
+            track.Year = track.Year is null or 0 ? mediaInfo.ProductionYear : track.Year;
+            track.TrackNumber = track.TrackNumber is null or 0 ? mediaInfo.IndexNumber : track.TrackNumber;
+            track.DiscNumber = track.DiscNumber is null or 0 ? mediaInfo.ParentIndexNumber : track.DiscNumber;
 
             if (audio.SupportsPeople && !audio.LockedFields.Contains(MetadataField.Cast))
             {
                 var people = new List<PersonInfo>();
-                var albumArtists = string.IsNullOrEmpty(track.AlbumArtist) ? mediaInfo.AlbumArtists : track.AlbumArtist.Split(InternalValueSeparator);
+                var albumArtists = string.IsNullOrEmpty(track.AlbumArtist) ? [] : track.AlbumArtist.Split(InternalValueSeparator);
 
                 if (libraryOptions.UseCustomTagDelimiters)
                 {
@@ -214,7 +214,7 @@ namespace MediaBrowser.Providers.MediaInfo
 
                 if (performers is null || performers.Length == 0)
                 {
-                    performers = string.IsNullOrEmpty(track.Artist) ? mediaInfo.Artists : track.Artist.Split(InternalValueSeparator);
+                    performers = string.IsNullOrEmpty(track.Artist) ? [] : track.Artist.Split(InternalValueSeparator);
                 }
 
                 if (libraryOptions.UseCustomTagDelimiters)
@@ -318,7 +318,7 @@ namespace MediaBrowser.Providers.MediaInfo
 
             if (!audio.LockedFields.Contains(MetadataField.Genres))
             {
-                var genres = string.IsNullOrEmpty(track.Genre) ? mediaInfo.Genres : track.Genre.Split(InternalValueSeparator).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+                var genres = string.IsNullOrEmpty(track.Genre) ? [] : track.Genre.Split(InternalValueSeparator).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 
                 if (libraryOptions.UseCustomTagDelimiters)
                 {
