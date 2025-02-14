@@ -1391,12 +1391,19 @@ public sealed class BaseItemRepository
             }
         }
 
-        if (!string.IsNullOrEmpty(filter.SearchTerm))
-        {
-            var searchTerm = filter.SearchTerm.ToLower();
-            baseQuery = baseQuery.Where(e => e.CleanName!.ToLower().Contains(searchTerm) || (e.OriginalTitle != null && e.OriginalTitle.ToLower().Contains(searchTerm)));
-        }
-
+		if (!string.IsNullOrEmpty(filter.SearchTerm))
+		{
+			var searchTerm = filter.SearchTerm.ToLower();
+			baseQuery = baseQuery.Where(e => 
+				e.CleanName!.ToLower().Contains(searchTerm) || 
+				(e.OriginalTitle != null && e.OriginalTitle.ToLower().Contains(searchTerm)) ||
+				(e.Path != null && e.Path.ToLower().Contains(searchTerm)) ||
+				(e.Overview != null && e.Overview.ToLower().Contains(searchTerm)) ||
+				(e.TagLine != null && e.TagLine.ToLower().Contains(searchTerm)) ||
+				(e.Album != null && e.Album.ToLower().Contains(searchTerm))
+			);
+		}
+		
         if (filter.IsFolder.HasValue)
         {
             baseQuery = baseQuery.Where(e => e.IsFolder == filter.IsFolder);
