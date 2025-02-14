@@ -1399,7 +1399,6 @@ public sealed class BaseItemRepository
 				(e.OriginalTitle != null && e.OriginalTitle.ToLower().Contains(searchTerm)) ||
 				(e.Path != null && e.Path.ToLower().Contains(searchTerm)) ||
 				(e.Overview != null && e.Overview.ToLower().Contains(searchTerm)) ||
-				(e.TagLine != null && e.TagLine.ToLower().Contains(searchTerm)) ||
 				(e.Album != null && e.Album.ToLower().Contains(searchTerm))
 			);
 		}
