@@ -9,7 +9,7 @@ on:
         description: 'Comma-separated list of PR numbers to merge (optional)'
         required: false
         type: string
-        default: '12775,13145,13194,13220,13231,13277,13332,13356,13492,13493,13605,13616,13633,13687,13696'
+        default: '11816,12775,13145,13194,13220,13231,13277,13332,13356,13492,13493,13605,13616,13633,13687,13696'
 
 # Permission for the default GITHUB_TOKEN
 permissions:
