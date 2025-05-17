@@ -84,9 +84,32 @@ public sealed class SetupServer : IDisposable
     /// <returns>A Task.</returns>
     public async Task RunAsync()
     {
-        var fileTemplate = await File.ReadAllTextAsync(Path.Combine("ServerSetupApp", "index.html.mstemplate")).ConfigureAwait(false);
+        var fileTemplate = await File.ReadAllTextAsync(Path.Combine("ServerSetupApp", "index.mstemplate.html")).ConfigureAwait(false);
         _startupUiRenderer = (await ParserOptionsBuilder.New()
             .WithTemplate(fileTemplate)
+            .WithFormatter(
+                (StartupLogEntry logEntry, IEnumerable<StartupLogEntry> children) =>
+                {
+                    if (children.Any())
+                    {
+                        var maxLevel = logEntry.LogLevel;
+                        var stack = new Stack<StartupLogEntry>(children);
+
+                        while (maxLevel != LogLevel.Error && stack.Count > 0 && (logEntry = stack.Pop()) != null) // error is the highest inherted error level.
+                        {
+                            maxLevel = maxLevel < logEntry.LogLevel ? logEntry.LogLevel : maxLevel;
+                            foreach (var child in logEntry.Children)
+                            {
+                                stack.Push(child);
+                            }
+                        }
+
+                        return maxLevel;
+                    }
+
+                    return logEntry.LogLevel;
+                },
+                "FormatLogLevel")
             .WithFormatter(
                 (LogLevel logLevel) =>
                 {
@@ -95,19 +118,20 @@ public sealed class SetupServer : IDisposable
                         case LogLevel.Trace:
                         case LogLevel.Debug:
                         case LogLevel.None:
-                            return string.Empty;
-                        case LogLevel.Information:
                             return "success";
+                        case LogLevel.Information:
+                            return "info";
                         case LogLevel.Warning:
                             return "warn";
                         case LogLevel.Error:
-                        case LogLevel.Critical:
                             return "danger";
+                        case LogLevel.Critical:
+                            return "danger-strong";
                     }
 
                     return string.Empty;
                 },
-                "FormatLogLevel")
+                "ToString")
             .BuildAndParseAsync()
             .ConfigureAwait(false))
             .CreateCompiledRenderer();
@@ -210,11 +234,13 @@ public sealed class SetupServer : IDisposable
                                         context.Response.Headers.ContentType = new StringValues("text/html");
                                         var networkManager = _networkManagerFactory();
 
+                                        var startupLogEntries = LogQueue?.ToArray() ?? [];
                                         await _startupUiRenderer.RenderAsync(
                                             new Dictionary<string, object>()
                                             {
+                                                { "isInReportingMode", _isUnhealthy },
                                                 { "retryValue", retryAfterValue },
-                                                { "logs", LogQueue?.ToArray() ?? [] },
+                                                { "logs", startupLogEntries },
                                                 { "localNetworkRequest", networkManager is not null && context.Connection.RemoteIpAddress is not null && networkManager.IsInLocalNetwork(context.Connection.RemoteIpAddress) }
                                             },
                                             new ByteCounterStream(context.Response.BodyWriter.AsStream(), IODefaults.FileStreamBufferSize, true, _startupUiRenderer.ParserOptions))
@@ -294,11 +320,6 @@ public sealed class SetupServer : IDisposable
 
         public ILogger CreateLogger(string categoryName)
         {
-            if (string.Equals(categoryName, nameof(Startup), StringComparison.Ordinal))
-            {
-                return new SetupServerLogger();
-            }
-
             return new CatchingSetupServerLogger();
         }
 
@@ -310,30 +331,6 @@ public sealed class SetupServer : IDisposable
             }
 
             _disposed = true;
-        }
-    }
-
-    internal sealed class SetupServerLogger : ILogger
-    {
-        public IDisposable? BeginScope<TState>(TState state)
-            where TState : notnull
-        {
-            return null;
-        }
-
-        public bool IsEnabled(LogLevel logLevel)
-        {
-            return true;
-        }
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
-            LogQueue?.Enqueue(new()
-            {
-                LogLevel = logLevel,
-                Content = formatter(state, exception),
-                DateOfCreation = DateTimeOffset.Now
-            });
         }
     }
 
@@ -373,5 +370,7 @@ public sealed class SetupServer : IDisposable
         public string? Content { get; set; }
 
         public DateTimeOffset DateOfCreation { get; set; }
+
+        public List<StartupLogEntry> Children { get; set; } = [];
     }
 }
